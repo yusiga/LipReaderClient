@@ -63,10 +63,11 @@ QScrollArea {
     font-size: 13px;
 }
 
-/* 识别结果卡片 - 句子级结果更显眼 */
+/* 识别结果卡片 - 句子级：左边强调线 + 结果强调框 */
 #lipreaderView #resultCard {
     background-color: rgba(255, 255, 255, 0.06);
     border: 1px solid rgba(255, 255, 255, 0.12);
+    border-left: 4px solid #60a5fa;
     border-radius: 12px;
     padding: 4px;
 }
@@ -78,14 +79,57 @@ QScrollArea {
     color: #cbd5e1;
     font-size: 13px;
 }
+#lipreaderView #resultCard #resultCardTextBox {
+    background-color: rgba(59, 130, 246, 0.15);
+    border-radius: 10px;
+    border: 1px solid rgba(96, 165, 250, 0.35);
+}
 #lipreaderView #resultCard #resultCardText {
-    color: #f1f5f9;
-    font-size: 18px;
+    color: #93c5fd;
+    font-size: 20px;
     font-weight: bold;
-    padding: 8px 0 4px 0;
 }
 
-/* 结果表格（关键字检测等） */
+/* 关键字检测结果卡片 */
+#lipreaderView #kwsResultCard {
+    background-color: rgba(255, 255, 255, 0.05);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 12px;
+    padding: 14px;
+}
+#lipreaderView #kwsResultCard #kwsResultCardTitle {
+    color: #e2e8f0;
+    font-size: 14px;
+    padding-bottom: 6px;
+}
+#lipreaderView #kwsResultTable {
+    background-color: rgba(255, 255, 255, 0.03);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 10px;
+    gridline-color: rgba(255, 255, 255, 0.06);
+}
+#lipreaderView QTableWidget#kwsResultTable::item {
+    padding: 10px 12px;
+    font: 13px 'Microsoft YaHei UI', 'PingFang SC';
+    color: #e2e8f0;
+}
+#lipreaderView QTableWidget#kwsResultTable::item:alternate {
+    background-color: rgba(255, 255, 255, 0.02);
+}
+#lipreaderView #kwsResultTable QHeaderView::section {
+    background-color: rgba(255, 255, 255, 0.08);
+    color: #94a3b8;
+    font: 13px 'Segoe UI Semibold', 'Microsoft YaHei UI';
+    padding: 10px 12px;
+    border: none;
+    border-bottom: 2px solid rgba(255, 255, 255, 0.1);
+    border-right: 1px solid rgba(255, 255, 255, 0.06);
+}
+#lipreaderView #kwsResultTable QHeaderView::section:last-child {
+    border-right: none;
+}
+
+/* 结果表格（通用/兼容） */
 #lipreaderView TableWidget {
     background-color: rgba(255, 255, 255, 0.03);
     border: 1px solid rgba(255, 255, 255, 0.1);

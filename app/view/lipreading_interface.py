@@ -77,6 +77,7 @@ class LipReadingInterface(GalleryInterface):
         self.__buildConfigRow()
         self.__buildResultSection()
         self.__connectSignals()
+        self.view.setMinimumWidth(0)
 
     def __initLayout(self):
         self.vBoxLayout.setSpacing(24)
@@ -98,18 +99,20 @@ class LipReadingInterface(GalleryInterface):
         self.vBoxLayout.addWidget(header, 0, Qt.AlignLeft | Qt.AlignTop)
 
     def __buildVideoSection(self):
-        """中央大视频区域"""
+        """中央大视频区域（可随窗口缩放）"""
         videoContainer = QFrame(self.view)
         videoContainer.setObjectName("lipreaderVideoContainer")
-        videoContainer.setMinimumHeight(340)
-        videoContainer.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
+        videoContainer.setMinimumHeight(200)
+        videoContainer.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
         layout = QVBoxLayout(videoContainer)
         layout.setContentsMargins(0, 0, 0, 0)
         layout.setAlignment(Qt.AlignCenter)
         self.videoWidget = VideoWidget(videoContainer)
-        self.videoWidget.setFixedSize(640, 360)
+        self.videoWidget.setMinimumSize(640, 360)
+        self.videoWidget.setMaximumSize(1600, 900)
+        self.videoWidget.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
         self.videoWidget.setObjectName("videoWidget")
-        layout.addWidget(self.videoWidget, 0, Qt.AlignCenter)
+        layout.addWidget(self.videoWidget, 1)
         self.vBoxLayout.addWidget(videoContainer)
 
     def __buildToolbar(self):
@@ -117,6 +120,7 @@ class LipReadingInterface(GalleryInterface):
         toolbar = QFrame(self.view)
         toolbar.setObjectName("lipreaderToolbar")
         toolbar.setMinimumHeight(56)
+        toolbar.setMinimumWidth(0)
         layout = QHBoxLayout(toolbar)
         layout.setContentsMargins(20, 12, 20, 12)
         layout.setSpacing(16)
@@ -143,6 +147,7 @@ class LipReadingInterface(GalleryInterface):
         self.configRow = QFrame(self.view)
         self.configRow.setObjectName("lipreaderConfigRow")
         self.configRow.setVisible(False)
+        self.configRow.setMinimumWidth(0)
         layout = QHBoxLayout(self.configRow)
         layout.setContentsMargins(20, 12, 20, 12)
         layout.setSpacing(24)
@@ -290,28 +295,35 @@ class LipReadingInterface(GalleryInterface):
 
 
 class ResultCard(QFrame):
-    """单条识别结果卡片：视频名 + 识别结果大号展示"""
+    """单条识别结果卡片：视频名 + 识别结果强调框展示"""
 
     def __init__(self, video_path: str, result_text: str, index: int, parent=None):
         super().__init__(parent)
         self.setObjectName("resultCard")
         self.setMinimumHeight(100)
+        self.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Minimum)
         layout = QVBoxLayout(self)
         layout.setContentsMargins(20, 16, 20, 16)
-        layout.setSpacing(8)
+        layout.setSpacing(12)
         name = Path(video_path).name
         fileLabel = CaptionLabel(f"视频 {index}: {name}", self)
         fileLabel.setObjectName("resultCardFile")
+        fileLabel.setWordWrap(True)
         layout.addWidget(fileLabel)
         titleLabel = StrongBodyLabel("识别结果", self)
         titleLabel.setObjectName("resultCardTitle")
         layout.addWidget(titleLabel)
+        textBox = QFrame(self)
+        textBox.setObjectName("resultCardTextBox")
+        textBoxLayout = QVBoxLayout(textBox)
+        textBoxLayout.setContentsMargins(16, 12, 16, 12)
         resultLabel = QLabel(result_text or "(无识别结果)", self)
         resultLabel.setObjectName("resultCardText")
         resultLabel.setWordWrap(True)
-        resultLabel.setFont(QFont("Microsoft YaHei UI", 16, QFont.Bold))
-        resultLabel.setMinimumHeight(44)
-        layout.addWidget(resultLabel)
+        resultLabel.setFont(QFont("Microsoft YaHei UI", 18, QFont.Bold))
+        resultLabel.setMinimumHeight(48)
+        textBoxLayout.addWidget(resultLabel)
+        layout.addWidget(textBox)
 
 
 class ResultCardsWidget(QScrollArea):
@@ -324,6 +336,8 @@ class ResultCardsWidget(QScrollArea):
         self.setHorizontalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
         self.setFrameShape(QFrame.NoFrame)
         self._content = QWidget(self)
+        self._content.setMinimumWidth(0)
+        self._content.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Preferred)
         self._layout = QVBoxLayout(self._content)
         self._layout.setContentsMargins(0, 0, 0, 0)
         self._layout.setSpacing(16)

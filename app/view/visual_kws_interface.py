@@ -78,6 +78,7 @@ class VisualKwsInterface(GalleryInterface):
         self.__buildConfigRow()
         self.__buildResultSection()
         self.__connectSignals()
+        self.view.setMinimumWidth(0)
 
     def __initLayout(self):
         self.vBoxLayout.setSpacing(24)
@@ -99,21 +100,24 @@ class VisualKwsInterface(GalleryInterface):
     def __buildVideoSection(self):
         videoContainer = QFrame(self.view)
         videoContainer.setObjectName("lipreaderVideoContainer")
-        videoContainer.setMinimumHeight(340)
-        videoContainer.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
+        videoContainer.setMinimumHeight(200)
+        videoContainer.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
         layout = QVBoxLayout(videoContainer)
         layout.setContentsMargins(0, 0, 0, 0)
         layout.setAlignment(Qt.AlignCenter)
         self.videoWidget = VideoWidget(videoContainer)
-        self.videoWidget.setFixedSize(640, 360)
+        self.videoWidget.setMinimumSize(640, 360)
+        self.videoWidget.setMaximumSize(1600, 900)
+        self.videoWidget.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
         self.videoWidget.setObjectName("videoWidget")
-        layout.addWidget(self.videoWidget, 0, Qt.AlignCenter)
+        layout.addWidget(self.videoWidget, 1)
         self.vBoxLayout.addWidget(videoContainer)
 
     def __buildToolbar(self):
         toolbar = QFrame(self.view)
         toolbar.setObjectName("lipreaderToolbar")
         toolbar.setMinimumHeight(56)
+        toolbar.setMinimumWidth(0)
         layout = QHBoxLayout(toolbar)
         layout.setContentsMargins(20, 12, 20, 12)
         layout.setSpacing(16)
@@ -135,6 +139,7 @@ class VisualKwsInterface(GalleryInterface):
         self.configRow = QFrame(self.view)
         self.configRow.setObjectName("lipreaderConfigRow")
         self.configRow.setVisible(False)
+        self.configRow.setMinimumWidth(0)
         layout = QHBoxLayout(self.configRow)
         layout.setContentsMargins(20, 12, 20, 12)
         layout.setSpacing(24)
@@ -252,11 +257,11 @@ class VisualKwsInterface(GalleryInterface):
         if not self.predict_text_list:
             self.resultLayout.addWidget(self.resultPlaceholder)
             return
-        for predict_text in self.predict_text_list:
-            table = TableFrame(self.resultContainer)
-            self.kws_tables.append(table)
-            self.resultLayout.addWidget(table, 0, Qt.AlignTop)
-            table.showData(predict_text)
+        for idx, predict_text in enumerate(self.predict_text_list, 1):
+            card = KwsResultCard(self.resultContainer, idx)
+            card.setTableData(predict_text)
+            self.kws_tables.append(card)
+            self.resultLayout.addWidget(card, 0, Qt.AlignTop)
 
     def __asyncRunningFunc(self):
         for t in self.kws_tables[:]:
@@ -294,22 +299,46 @@ class VisualKwsInterface(GalleryInterface):
         self.vBoxLayout.addWidget(self.resultContainer, 1)
 
 
-class TableFrame(TableWidget):
-    def showData(self, predict_text):
-        self.verticalHeader().hide()
-        self.setBorderRadius(10)
-        self.setBorderVisible(True)
+class KwsResultCard(QFrame):
+    """单条关键字检测结果：带标题的卡片 + 可自适应的表格"""
+
+    def __init__(self, parent=None, index=1):
+        super().__init__(parent)
+        self.setObjectName("kwsResultCard")
+        self.setMinimumWidth(0)
+        self.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Minimum)
+        layout = QVBoxLayout(self)
+        layout.setContentsMargins(0, 0, 0, 12)
+        layout.setSpacing(8)
+        self.titleLabel = StrongBodyLabel(f"结果 {index}", self)
+        self.titleLabel.setObjectName("kwsResultCardTitle")
+        layout.addWidget(self.titleLabel)
+        self.table = TableWidget(self)
+        self.table.setObjectName("kwsResultTable")
+        self.table.verticalHeader().hide()
+        self.table.setBorderRadius(10)
+        self.table.setBorderVisible(True)
+        self.table.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Minimum)
+        self.table.setMinimumWidth(0)
+        layout.addWidget(self.table)
+
+    def setTableData(self, predict_text):
         clip_group = len(predict_text)
         top_k = len(predict_text[0])
-        self.setColumnCount(clip_group)
-        self.setRowCount(top_k)
-        self.setHorizontalHeaderLabels([str(i) for i in range(1, clip_group + 1)])
+        self.table.setColumnCount(clip_group)
+        self.table.setRowCount(top_k)
+        self.table.setHorizontalHeaderLabels([str(i) for i in range(1, clip_group + 1)])
         for i in range(clip_group):
-            self.setColumnWidth(i, 50)
+            self.table.setColumnWidth(i, 50)
         for i in range(top_k):
-            self.setRowHeight(i, 50)
-        width = min(800, 50 * clip_group)
-        self.setFixedSize(width, 50 * (top_k + 1))
+            self.table.setRowHeight(i, 44)
+        self.table.setMinimumHeight(44 * (top_k + 1))
         for j, top in enumerate(predict_text):
             for i, item in enumerate(top):
-                self.setItem(i, j, QTableWidgetItem(item))
+                self.table.setItem(i, j, QTableWidgetItem(item))
+
+
+class TableFrame(TableWidget):
+    """保留兼容，实际使用 KwsResultCard 包裹的 TableWidget"""
+    def showData(self, predict_text):
+        pass

@@ -63,10 +63,11 @@ QScrollArea {
     font-size: 13px;
 }
 
-/* 识别结果卡片 - 句子级结果更显眼 */
+/* 识别结果卡片 - 句子级：左边强调线 + 结果强调框 */
 #lipreaderView #resultCard {
     background-color: #ffffff;
     border: 1px solid #e2e8f0;
+    border-left: 4px solid #3b82f6;
     border-radius: 12px;
     padding: 4px;
 }
@@ -78,14 +79,57 @@ QScrollArea {
     color: #475569;
     font-size: 13px;
 }
+#lipreaderView #resultCard #resultCardTextBox {
+    background-color: #eff6ff;
+    border-radius: 10px;
+    border: 1px solid #bfdbfe;
+}
 #lipreaderView #resultCard #resultCardText {
-    color: #0f172a;
-    font-size: 18px;
+    color: #1e40af;
+    font-size: 20px;
     font-weight: bold;
-    padding: 8px 0 4px 0;
 }
 
-/* 结果表格（关键字检测等） */
+/* 关键字检测结果卡片 */
+#lipreaderView #kwsResultCard {
+    background-color: #ffffff;
+    border: 1px solid #e2e8f0;
+    border-radius: 12px;
+    padding: 14px;
+}
+#lipreaderView #kwsResultCard #kwsResultCardTitle {
+    color: #334155;
+    font-size: 14px;
+    padding-bottom: 6px;
+}
+#lipreaderView #kwsResultTable {
+    background-color: #f8fafc;
+    border: 1px solid #e2e8f0;
+    border-radius: 10px;
+    gridline-color: #e2e8f0;
+}
+#lipreaderView QTableWidget#kwsResultTable::item {
+    padding: 10px 12px;
+    font: 13px 'Microsoft YaHei UI', 'PingFang SC';
+    color: #1e293b;
+}
+#lipreaderView QTableWidget#kwsResultTable::item:alternate {
+    background-color: #f1f5f9;
+}
+#lipreaderView #kwsResultTable QHeaderView::section {
+    background-color: #e2e8f0;
+    color: #475569;
+    font: 13px 'Segoe UI Semibold', 'Microsoft YaHei UI';
+    padding: 10px 12px;
+    border: none;
+    border-bottom: 2px solid #cbd5e1;
+    border-right: 1px solid #cbd5e1;
+}
+#lipreaderView #kwsResultTable QHeaderView::section:last-child {
+    border-right: none;
+}
+
+/* 结果表格（通用/兼容） */
 #lipreaderView TableWidget {
     background-color: #ffffff;
     border: 1px solid #e2e8f0;
