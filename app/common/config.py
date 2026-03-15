@@ -5,7 +5,8 @@ from enum import Enum
 from PyQt5.QtCore import QLocale
 from qfluentwidgets import (qconfig, QConfig, ConfigItem, OptionsConfigItem, BoolValidator,
                             OptionsValidator, RangeConfigItem, RangeValidator,
-                            FolderListValidator, Theme, FolderValidator, ConfigSerializer, __version__)
+                            FolderListValidator, Theme, FolderValidator, ConfigSerializer, __version__,
+                            setThemeColor)
 
 
 class Language(Enum):
@@ -68,4 +69,8 @@ EN_SUPPORT_URL = "https://qfluentwidgets.com/price/"
 
 cfg = Config()
 cfg.themeMode.value = Theme.AUTO
+# 设置默认主题色为蓝色 (#0078d4)
+cfg.themeColor.value = "#0078d4"
 qconfig.load('app/config/config.json', cfg)
+# 启动时应用主题色
+setThemeColor(cfg.themeColor.value)

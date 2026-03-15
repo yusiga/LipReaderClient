@@ -98,20 +98,22 @@ class VisualKwsInterface(GalleryInterface):
         self.vBoxLayout.addWidget(header, 0, Qt.AlignLeft | Qt.AlignTop)
 
     def __buildVideoSection(self):
+        """中央大视频区域（固定高度，防止被结果挤压）"""
         videoContainer = QFrame(self.view)
         videoContainer.setObjectName("lipreaderVideoContainer")
-        videoContainer.setMinimumHeight(200)
-        videoContainer.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
+        videoContainer.setMinimumHeight(360)
+        videoContainer.setMaximumHeight(500)
+        videoContainer.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
         layout = QVBoxLayout(videoContainer)
         layout.setContentsMargins(0, 0, 0, 0)
         layout.setAlignment(Qt.AlignCenter)
         self.videoWidget = VideoWidget(videoContainer)
         self.videoWidget.setMinimumSize(640, 360)
-        self.videoWidget.setMaximumSize(1600, 900)
+        self.videoWidget.setMaximumSize(1600, 500)
         self.videoWidget.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
         self.videoWidget.setObjectName("videoWidget")
         layout.addWidget(self.videoWidget, 1)
-        self.vBoxLayout.addWidget(videoContainer)
+        self.vBoxLayout.addWidget(videoContainer, 0, Qt.AlignHCenter)
 
     def __buildToolbar(self):
         toolbar = QFrame(self.view)
@@ -127,7 +129,7 @@ class VisualKwsInterface(GalleryInterface):
         self.fileHintLabel = BodyLabel("未选择视频", toolbar)
         self.fileHintLabel.setStyleSheet("color: gray;")
         self.advancedSwitch = SwitchButton(toolbar)
-        self.advancedSwitch.setText("高级选项")
+        self.advancedSwitch.setText("配置信息")
 
         layout.addWidget(self.btnSelectVideo)
         layout.addWidget(self.btnStart)
@@ -136,49 +138,62 @@ class VisualKwsInterface(GalleryInterface):
         self.vBoxLayout.addWidget(toolbar)
 
     def __buildConfigRow(self):
+        """配置信息（两行）：第一行批量文件夹，第二行其他配置"""
         self.configRow = QFrame(self.view)
         self.configRow.setObjectName("lipreaderConfigRow")
         self.configRow.setVisible(False)
         self.configRow.setMinimumWidth(0)
-        layout = QHBoxLayout(self.configRow)
-        layout.setContentsMargins(20, 12, 20, 12)
-        layout.setSpacing(24)
+        mainLayout = QVBoxLayout(self.configRow)
+        mainLayout.setContentsMargins(20, 12, 20, 12)
+        mainLayout.setSpacing(12)
 
-        layout.addWidget(StrongBodyLabel("批量文件夹:", self.configRow))
+        # 第一行：批量文件夹 + 按钮
+        row1 = QHBoxLayout()
+        row1.setSpacing(16)
+        row1.addWidget(StrongBodyLabel("批量文件夹:", self.configRow))
         self.btnAddFolder = PushButton("添加文件夹", self.configRow, FIF.FOLDER_ADD)
         self.btnViewFolders = PushButton("查看已选文件夹 (0)", self.configRow, FIF.FOLDER)
-        layout.addWidget(self.btnAddFolder)
-        layout.addWidget(self.btnViewFolders)
+        row1.addWidget(self.btnAddFolder)
+        row1.addWidget(self.btnViewFolders)
+        row1.addStretch(1)
+        mainLayout.addLayout(row1)
 
-        layout.addWidget(StrongBodyLabel("推理硬件:", self.configRow))
+        # 第二行：推理硬件 + 策略 + Clip + Top K + 导出
+        row2 = QHBoxLayout()
+        row2.setSpacing(20)
+        row2.addWidget(StrongBodyLabel("推理硬件:", self.configRow))
         self.hardwareCombo = ComboBox(self.configRow)
         self.hardwareCombo.addItems(["CPU", "GPU"])
-        layout.addWidget(self.hardwareCombo)
+        self.hardwareCombo.setMinimumWidth(80)
+        row2.addWidget(self.hardwareCombo)
 
-        layout.addWidget(StrongBodyLabel("策略:", self.configRow))
+        row2.addWidget(StrongBodyLabel("策略:", self.configRow))
         self.strategyCombo = ComboBox(self.configRow)
         self.strategyCombo.addItems(["Manu", "Auto"])
         self.strategyCombo.currentIndexChanged.connect(self.__onStrategyChanged)
-        layout.addWidget(self.strategyCombo)
+        self.strategyCombo.setMinimumWidth(80)
+        row2.addWidget(self.strategyCombo)
 
         self.clipLabel = StrongBodyLabel("Clip:", self.configRow)
         self.clipSpin = QSpinBox(self.configRow)
         self.clipSpin.setRange(1, 10)
         self.clipSpin.setValue(5)
         self.clipSpin.setMinimumWidth(60)
-        layout.addWidget(self.clipLabel)
-        layout.addWidget(self.clipSpin)
+        row2.addWidget(self.clipLabel)
+        row2.addWidget(self.clipSpin)
 
-        layout.addWidget(StrongBodyLabel("Top K:", self.configRow))
+        row2.addWidget(StrongBodyLabel("Top K:", self.configRow))
         self.topKSpin = QSpinBox(self.configRow)
         self.topKSpin.setRange(1, 10)
         self.topKSpin.setValue(5)
         self.topKSpin.setMinimumWidth(60)
-        layout.addWidget(self.topKSpin)
+        row2.addWidget(self.topKSpin)
 
-        layout.addStretch(1)
+        row2.addStretch(1)
         self.btnExport = PushButton("导出 CSV", self.configRow, FIF.SAVE)
-        layout.addWidget(self.btnExport)
+        row2.addWidget(self.btnExport)
+        mainLayout.addLayout(row2)
+
         self.vBoxLayout.addWidget(self.configRow)
 
     def __onStrategyChanged(self, index):
@@ -246,17 +261,16 @@ class VisualKwsInterface(GalleryInterface):
         self.worker.finished.connect(self.__asyncFinishedFunc)
 
     def __asyncFinishedFunc(self):
-        for t in self.kws_tables:
-            self.resultLayout.removeWidget(t)
-            t.deleteLater()
+        # 清除旧结果
+        while self.resultLayout.count():
+            item = self.resultLayout.takeAt(0)
+            if item.widget():
+                item.widget().deleteLater()
         self.kws_tables.clear()
-        try:
-            self.resultLayout.removeWidget(self.resultPlaceholder)
-        except Exception:
-            pass
         if not self.predict_text_list:
             self.resultLayout.addWidget(self.resultPlaceholder)
             return
+        # 直接添加卡片到布局（页面本身可滚动）
         for idx, predict_text in enumerate(self.predict_text_list, 1):
             card = KwsResultCard(self.resultContainer, idx)
             card.setTableData(predict_text)
@@ -287,11 +301,12 @@ class VisualKwsInterface(GalleryInterface):
         ic(self.predict_text_list)
 
     def __buildResultSection(self):
-        self.resultContainer = QFrame(self.view)
+        """结果区占位，直接加卡片到主布局（通过页面滚动）"""
+        self.resultContainer = QWidget(self.view)
         self.resultContainer.setObjectName("lipreaderResultContainer")
-        self.resultContainer.setMinimumHeight(120)
         self.resultLayout = QVBoxLayout(self.resultContainer)
         self.resultLayout.setContentsMargins(0, 12, 0, 0)
+        self.resultLayout.setSpacing(12)
         self.resultLayout.setAlignment(Qt.AlignTop)
         self.resultPlaceholder = BodyLabel("检测结果将显示在此处", self.resultContainer)
         self.resultPlaceholder.setObjectName("lipreaderResultPlaceholder")

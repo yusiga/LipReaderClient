@@ -99,21 +99,22 @@ class LipReadingInterface(GalleryInterface):
         self.vBoxLayout.addWidget(header, 0, Qt.AlignLeft | Qt.AlignTop)
 
     def __buildVideoSection(self):
-        """中央大视频区域（可随窗口缩放）"""
+        """中央大视频区域（固定高度，防止被结果挤压）"""
         videoContainer = QFrame(self.view)
         videoContainer.setObjectName("lipreaderVideoContainer")
-        videoContainer.setMinimumHeight(200)
-        videoContainer.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
+        videoContainer.setMinimumHeight(360)
+        videoContainer.setMaximumHeight(500)
+        videoContainer.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
         layout = QVBoxLayout(videoContainer)
         layout.setContentsMargins(0, 0, 0, 0)
         layout.setAlignment(Qt.AlignCenter)
         self.videoWidget = VideoWidget(videoContainer)
         self.videoWidget.setMinimumSize(640, 360)
-        self.videoWidget.setMaximumSize(1600, 900)
+        self.videoWidget.setMaximumSize(1600, 500)
         self.videoWidget.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
         self.videoWidget.setObjectName("videoWidget")
         layout.addWidget(self.videoWidget, 1)
-        self.vBoxLayout.addWidget(videoContainer)
+        self.vBoxLayout.addWidget(videoContainer, 0, Qt.AlignHCenter)
 
     def __buildToolbar(self):
         """横向操作栏：选择视频 | 开始识别 | 高级选项"""
@@ -133,7 +134,7 @@ class LipReadingInterface(GalleryInterface):
         self.fileHintLabel.setObjectName("lipreaderFileHint")
         self.fileHintLabel.setStyleSheet("color: gray;")
         self.advancedSwitch = SwitchButton(toolbar)
-        self.advancedSwitch.setText("高级选项")
+        self.advancedSwitch.setText("配置信息")
         self.advancedSwitch.setObjectName("lipreaderAdvancedSwitch")
 
         layout.addWidget(self.btnSelectVideo)
@@ -143,46 +144,58 @@ class LipReadingInterface(GalleryInterface):
         self.vBoxLayout.addWidget(toolbar)
 
     def __buildConfigRow(self):
-        """高级选项行：文件夹、硬件、语言、导出（默认隐藏）"""
+        """配置信息（两行）：第一行批量文件夹，第二行其他配置"""
         self.configRow = QFrame(self.view)
         self.configRow.setObjectName("lipreaderConfigRow")
         self.configRow.setVisible(False)
         self.configRow.setMinimumWidth(0)
-        layout = QHBoxLayout(self.configRow)
-        layout.setContentsMargins(20, 12, 20, 12)
-        layout.setSpacing(24)
+        mainLayout = QVBoxLayout(self.configRow)
+        mainLayout.setContentsMargins(20, 12, 20, 12)
+        mainLayout.setSpacing(12)
 
-        layout.addWidget(StrongBodyLabel("批量文件夹:", self.configRow))
+        # 第一行：批量文件夹 + 按钮
+        row1 = QHBoxLayout()
+        row1.setSpacing(16)
+        row1.addWidget(StrongBodyLabel("批量文件夹:", self.configRow))
         self.btnAddFolder = PushButton("添加文件夹", self.configRow, FIF.FOLDER_ADD)
         self.btnViewFolders = PushButton("查看已选文件夹 (0)", self.configRow, FIF.FOLDER)
         self.btnViewFolders.setObjectName("btnViewFolders")
-        layout.addWidget(self.btnAddFolder)
-        layout.addWidget(self.btnViewFolders)
+        row1.addWidget(self.btnAddFolder)
+        row1.addWidget(self.btnViewFolders)
+        row1.addStretch(1)
+        mainLayout.addLayout(row1)
 
-        layout.addWidget(StrongBodyLabel("推理硬件:", self.configRow))
+        # 第二行：推理硬件 + 目标语言 + 导出
+        row2 = QHBoxLayout()
+        row2.setSpacing(24)
+        row2.addWidget(StrongBodyLabel("推理硬件:", self.configRow))
         self.hardwareCombo = ComboBox(self.configRow)
         self.hardwareCombo.addItems(["CPU", "GPU"])
         self.hardwareCombo.setCurrentIndex(0)
-        layout.addWidget(self.hardwareCombo)
+        self.hardwareCombo.setMinimumWidth(80)
+        row2.addWidget(self.hardwareCombo)
 
-        layout.addWidget(StrongBodyLabel("目标语言:", self.configRow))
+        row2.addWidget(StrongBodyLabel("目标语言:", self.configRow))
         self.languageCombo = ComboBox(self.configRow)
         self.languageCombo.addItems(["中文", "拼音", "English"])
         self.languageCombo.setCurrentIndex(0)
-        layout.addWidget(self.languageCombo)
+        self.languageCombo.setMinimumWidth(80)
+        row2.addWidget(self.languageCombo)
 
-        layout.addStretch(1)
+        row2.addStretch(1)
         self.btnExport = PushButton("导出 CSV", self.configRow, FIF.SAVE)
-        layout.addWidget(self.btnExport)
+        row2.addWidget(self.btnExport)
+        mainLayout.addLayout(row2)
+
         self.vBoxLayout.addWidget(self.configRow)
 
     def __buildResultSection(self):
-        """结果区占位，表格在识别完成后动态添加"""
-        self.resultContainer = QFrame(self.view)
+        """结果区占位，直接加卡片到主布局（通过页面滚动）"""
+        self.resultContainer = QWidget(self.view)
         self.resultContainer.setObjectName("lipreaderResultContainer")
-        self.resultContainer.setMinimumHeight(120)
         self.resultLayout = QVBoxLayout(self.resultContainer)
         self.resultLayout.setContentsMargins(0, 12, 0, 0)
+        self.resultLayout.setSpacing(16)
         self.resultLayout.setAlignment(Qt.AlignTop)
         self.resultPlaceholder = BodyLabel("识别结果将显示在此处", self.resultContainer)
         self.resultPlaceholder.setObjectName("lipreaderResultPlaceholder")
@@ -257,26 +270,25 @@ class LipReadingInterface(GalleryInterface):
         self.worker.finished.connect(self.__asyncFinishedFunc)
 
     def __asyncFinishedFunc(self):
-        if getattr(self, "result_cards", None):
-            self.resultLayout.removeWidget(self.result_cards)
-            self.result_cards.deleteLater()
-            self.result_cards = None
-        try:
-            self.resultLayout.removeWidget(self.resultPlaceholder)
-        except Exception:
-            pass
+        # 清除旧结果
+        while self.resultLayout.count():
+            item = self.resultLayout.takeAt(0)
+            if item.widget():
+                item.widget().deleteLater()
         if not self.video_file_list:
             self.resultLayout.addWidget(self.resultPlaceholder)
             return
-        self.result_cards = ResultCardsWidget(self.resultContainer)
-        self.result_cards.showData(self.video_file_list, self.predict_text_list)
-        self.resultLayout.addWidget(self.result_cards, 1, Qt.AlignTop)
+        # 直接添加卡片到布局（页面本身可滚动）
+        for i, (path, text) in enumerate(zip(self.video_file_list, self.predict_text_list), 1):
+            card = ResultCard(path, text, i, self.resultContainer)
+            self.resultLayout.addWidget(card)
 
     def __asyncRunningFunc(self):
-        if getattr(self, "result_cards", None):
-            self.resultLayout.removeWidget(self.result_cards)
-            self.result_cards.deleteLater()
-            self.result_cards = None
+        # 清除旧结果
+        while self.resultLayout.count():
+            item = self.resultLayout.takeAt(0)
+            if item.widget():
+                item.widget().deleteLater()
         file_1 = [f for f in self._selected_files if f.endswith(".mp4")]
         file_2 = [
             os.path.join(root, name)
