@@ -1,0 +1,82 @@
+# ----- Python -----
+__pycache__/
+*.py[cod]
+*$py.class
+*.pyo
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+
+# ----- 虚拟环境 -----
+venv/
+.venv/
+env/
+.env/
+ENV/
+
+# ----- IDE / 编辑器 -----
+.idea/
+*.iml
+*.ipr
+*.iws
+.vscode/
+*.swp
+*.swo
+*~
+
+# ----- 操作系统 -----
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+Desktop.ini
+
+# ----- 项目相关 -----
+# 模型权重（体积大，通常单独下载或从 release 获取）
+app/lipreader/checkpoint/*.pth
+app/lipreader/checkpoint/*.pt
+
+# 测试生成的图片/输出
+app/lipreader/test/output_images/
+
+# 本地配置（含用户路径等，可提交 config.example.json 作为模板）
+app/config/config.json
+
+# 本地视频/样本数据（若需共享可移出忽略）
+app/lipreader/video/
+app/download/
+
+# ----- 日志与缓存 -----
+*.log
+.cache/
+*.cache
+tmp/
+temp/
+.tmp/
+
+# ----- 环境变量与密钥 -----
+.env
+.env.local
+.env.*.local
+*.pem
+secrets/
+
+# ----- 打包与分发 -----
+*.manifest
+*.spec
