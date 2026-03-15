@@ -69,8 +69,8 @@ EN_SUPPORT_URL = "https://qfluentwidgets.com/price/"
 
 cfg = Config()
 cfg.themeMode.value = Theme.AUTO
-# 设置默认主题色为蓝色 (#0078d4)
-cfg.themeColor.value = "#0078d4"
+# 设置默认主题色为蓝色 (#7092BE)
+cfg.themeColor.value = "#7092BE"
 qconfig.load('app/config/config.json', cfg)
 # 启动时应用主题色
 setThemeColor(cfg.themeColor.value)
