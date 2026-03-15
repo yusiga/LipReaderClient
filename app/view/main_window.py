@@ -39,10 +39,9 @@ class MainWindow(FluentWindow):
         # create system theme listener
         self.themeListener = SystemThemeListener(self)
 
-        # create sub interface
-        # self.homeInterface = HomeInterface(self)
-        self.visualKwsInterface = VisualKwsInterface(self)
+        # create sub interface（句子级第一页，关键字检测第二页）
         self.lipReadingInterface = LipReadingInterface(self)
+        self.visualKwsInterface = VisualKwsInterface(self)
         self.settingInterface = SettingInterface(self)
 
         # enable acrylic effect
@@ -68,8 +67,8 @@ class MainWindow(FluentWindow):
         # 左侧导航栏-1
         # self.addSubInterface(self.homeInterface, FIF.HOME, self.tr("Home"))  # 主页
         self.navigationInterface.addSeparator()  # 左侧导航栏之间的分割线
-        self.addSubInterface(self.visualKwsInterface, Icon.TEXT, "唇语关键字检测")
         self.addSubInterface(self.lipReadingInterface, FIF.MESSAGE, "句子级唇语识别")
+        self.addSubInterface(self.visualKwsInterface, Icon.TEXT, "唇语关键字检测")
 
         # why not show
         self.addSubInterface(

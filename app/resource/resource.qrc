@@ -130,6 +130,7 @@
         <file>images/Shoko4.jpg</file>
 
         <file>qss/dark/gallery_interface.qss</file>
+        <file>qss/dark/lipreader_interface.qss</file>
         <file>qss/dark/home_interface.qss</file>
         <file>qss/dark/icon_interface.qss</file>
         <file>qss/dark/link_card.qss</file>
@@ -139,6 +140,7 @@
         <file>qss/dark/navigation_view_interface.qss</file>
 
         <file>qss/light/gallery_interface.qss</file>
+        <file>qss/light/lipreader_interface.qss</file>
         <file>qss/light/home_interface.qss</file>
         <file>qss/light/icon_interface.qss</file>
         <file>qss/light/link_card.qss</file>

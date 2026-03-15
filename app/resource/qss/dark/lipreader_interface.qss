@@ -1,0 +1,118 @@
+/* 唇语识别界面 - 深色主题 - 新布局样式 */
+
+LipReadingInterface,
+VisualKwsInterface,
+#lipreaderView {
+    background-color: transparent;
+}
+
+QScrollArea {
+    border: none;
+    background-color: transparent;
+}
+
+/* 左上角标题区 */
+#lipreaderView #lipreaderHeader {
+    background-color: transparent;
+}
+
+#lipreaderView #lipreaderTitle {
+    font: 26px 'Segoe UI Semibold', 'Microsoft YaHei UI', 'PingFang SC Semibold';
+    color: #f1f5f9;
+}
+
+#lipreaderView #lipreaderSubtitle {
+    font: 13px 'Segoe UI', 'Microsoft YaHei UI', 'PingFang SC';
+    color: #94a3b8;
+}
+
+/* 视频区域 */
+#lipreaderView #lipreaderVideoContainer {
+    background-color: rgba(30, 41, 59, 0.5);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 16px;
+    padding: 16px;
+}
+
+#lipreaderView #lipreaderVideoContainer QGraphicsView {
+    background-color: #0f172a;
+    border-radius: 12px;
+}
+
+/* 横向操作栏 */
+#lipreaderView #lipreaderToolbar {
+    background-color: rgba(255, 255, 255, 0.05);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 12px;
+}
+
+/* 高级选项行 */
+#lipreaderView #lipreaderConfigRow {
+    background-color: rgba(255, 255, 255, 0.03);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    border-radius: 12px;
+}
+
+/* 结果区 */
+#lipreaderView #lipreaderResultContainer {
+    background-color: transparent;
+}
+
+#lipreaderView #lipreaderResultPlaceholder {
+    color: #64748b;
+    font-size: 13px;
+}
+
+/* 识别结果卡片 - 句子级结果更显眼 */
+#lipreaderView #resultCard {
+    background-color: rgba(255, 255, 255, 0.06);
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    border-radius: 12px;
+    padding: 4px;
+}
+#lipreaderView #resultCard #resultCardFile {
+    color: #94a3b8;
+    font-size: 12px;
+}
+#lipreaderView #resultCard #resultCardTitle {
+    color: #cbd5e1;
+    font-size: 13px;
+}
+#lipreaderView #resultCard #resultCardText {
+    color: #f1f5f9;
+    font-size: 18px;
+    font-weight: bold;
+    padding: 8px 0 4px 0;
+}
+
+/* 结果表格（关键字检测等） */
+#lipreaderView TableWidget {
+    background-color: rgba(255, 255, 255, 0.03);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 12px;
+    gridline-color: rgba(255, 255, 255, 0.06);
+}
+
+#lipreaderView TableWidget::item {
+    padding: 10px 14px;
+    font: 13px 'Segoe UI', 'Microsoft YaHei UI', 'PingFang SC';
+    color: #e2e8f0;
+}
+
+#lipreaderView TableWidget::item:alternate {
+    background-color: rgba(255, 255, 255, 0.02);
+}
+
+#lipreaderView TableWidget QHeaderView::section {
+    background-color: rgba(255, 255, 255, 0.06);
+    color: #94a3b8;
+    font: 13px 'Segoe UI Semibold', 'Microsoft YaHei UI';
+    padding: 12px 14px;
+    border: none;
+    border-bottom: 2px solid rgba(255, 255, 255, 0.1);
+    border-right: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+#lipreaderView TableWidget QHeaderView::section:last-child {
+    border-right: none;
+}

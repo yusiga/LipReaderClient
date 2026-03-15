@@ -34,6 +34,7 @@ class VideoWidget(QGraphicsView):
 
     def __init__(self, parent=None):
         super().__init__(parent)
+        self.setObjectName("videoWidget")
         self.isHover = False
         self.timer = QTimer(self)
 

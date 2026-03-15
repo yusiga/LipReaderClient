@@ -2,11 +2,20 @@
 ## 1、安装依赖
 
 ```shell
+conda create -n lipreading python=3.8 -y
+conda activate lipreading
+```
+
+```shell
+conda install pip openssl certifi -y
+```
+
+```shell
 pip install PyQt-Fluent-Widgets -i https://pypi.org/simple/
 ```
 
 ```shell
-pip3 install torch --index-url https://download.pytorch.org/whl/cu126
+pip install torch --index-url https://download.pytorch.org/whl/cu126
 ```
 
 ```shell

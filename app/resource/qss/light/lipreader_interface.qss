@@ -1,0 +1,118 @@
+/* 唇语识别界面 - 浅色主题 - 新布局样式 */
+
+LipReadingInterface,
+VisualKwsInterface,
+#lipreaderView {
+    background-color: transparent;
+}
+
+QScrollArea {
+    border: none;
+    background-color: transparent;
+}
+
+/* 左上角标题区 */
+#lipreaderView #lipreaderHeader {
+    background-color: transparent;
+}
+
+#lipreaderView #lipreaderTitle {
+    font: 26px 'Segoe UI Semibold', 'Microsoft YaHei UI', 'PingFang SC Semibold';
+    color: #111827;
+}
+
+#lipreaderView #lipreaderSubtitle {
+    font: 13px 'Segoe UI', 'Microsoft YaHei UI', 'PingFang SC';
+    color: #6b7280;
+}
+
+/* 视频区域 - 大块卡片 */
+#lipreaderView #lipreaderVideoContainer {
+    background-color: #f8fafc;
+    border: 1px solid #e2e8f0;
+    border-radius: 16px;
+    padding: 16px;
+}
+
+#lipreaderView #lipreaderVideoContainer QGraphicsView {
+    background-color: #1e293b;
+    border-radius: 12px;
+}
+
+/* 横向操作栏 - 条形背景 */
+#lipreaderView #lipreaderToolbar {
+    background-color: #ffffff;
+    border: 1px solid #e2e8f0;
+    border-radius: 12px;
+}
+
+/* 高级选项行 */
+#lipreaderView #lipreaderConfigRow {
+    background-color: #f1f5f9;
+    border: 1px solid #e2e8f0;
+    border-radius: 12px;
+}
+
+/* 结果区 */
+#lipreaderView #lipreaderResultContainer {
+    background-color: transparent;
+}
+
+#lipreaderView #lipreaderResultPlaceholder {
+    color: #94a3b8;
+    font-size: 13px;
+}
+
+/* 识别结果卡片 - 句子级结果更显眼 */
+#lipreaderView #resultCard {
+    background-color: #ffffff;
+    border: 1px solid #e2e8f0;
+    border-radius: 12px;
+    padding: 4px;
+}
+#lipreaderView #resultCard #resultCardFile {
+    color: #64748b;
+    font-size: 12px;
+}
+#lipreaderView #resultCard #resultCardTitle {
+    color: #475569;
+    font-size: 13px;
+}
+#lipreaderView #resultCard #resultCardText {
+    color: #0f172a;
+    font-size: 18px;
+    font-weight: bold;
+    padding: 8px 0 4px 0;
+}
+
+/* 结果表格（关键字检测等） */
+#lipreaderView TableWidget {
+    background-color: #ffffff;
+    border: 1px solid #e2e8f0;
+    border-radius: 12px;
+    gridline-color: #e2e8f0;
+}
+
+#lipreaderView TableWidget::item {
+    padding: 10px 14px;
+    font: 13px 'Segoe UI', 'Microsoft YaHei UI', 'PingFang SC';
+    color: #1e293b;
+}
+
+#lipreaderView TableWidget::item:alternate {
+    background-color: #f8fafc;
+}
+
+#lipreaderView TableWidget QHeaderView::section {
+    background-color: #f1f5f9;
+    color: #475569;
+    font: 13px 'Segoe UI Semibold', 'Microsoft YaHei UI';
+    padding: 12px 14px;
+    border: none;
+    border-bottom: 2px solid #e2e8f0;
+    border-right: 1px solid #e2e8f0;
+}
+
+#lipreaderView TableWidget QHeaderView::section:last-child {
+    border-right: none;
+}
