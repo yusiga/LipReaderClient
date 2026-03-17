@@ -114,7 +114,7 @@ class LipReadingInterface(GalleryInterface):
         self.videoWidget.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
         self.videoWidget.setObjectName("videoWidget")
         layout.addWidget(self.videoWidget, 1)
-        self.vBoxLayout.addWidget(videoContainer, 0, Qt.AlignHCenter)
+        self.vBoxLayout.addWidget(videoContainer, 2, Qt.AlignHCenter)
 
     def __buildToolbar(self):
         """横向操作栏：选择视频 | 开始识别 | 高级选项"""

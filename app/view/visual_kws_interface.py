@@ -113,7 +113,7 @@ class VisualKwsInterface(GalleryInterface):
         self.videoWidget.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
         self.videoWidget.setObjectName("videoWidget")
         layout.addWidget(self.videoWidget, 1)
-        self.vBoxLayout.addWidget(videoContainer, 0, Qt.AlignHCenter)
+        self.vBoxLayout.addWidget(videoContainer, 2, Qt.AlignHCenter)
 
     def __buildToolbar(self):
         toolbar = QFrame(self.view)
