@@ -331,6 +331,8 @@ class KwsResultCard(QFrame):
         self.table = TableWidget(self)
         self.table.setObjectName("kwsResultTable")
         self.table.verticalHeader().hide()
+        self.table.setWordWrap(True)
+        self.table.setTextElideMode(Qt.ElideNone)
         self.table.setBorderRadius(10)
         self.table.setBorderVisible(True)
         self.table.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Minimum)
@@ -339,18 +341,26 @@ class KwsResultCard(QFrame):
 
     def setTableData(self, predict_text):
         clip_group = len(predict_text)
-        top_k = len(predict_text[0])
+        top_k = len(predict_text[0]["keywords"]) if clip_group else 0
         self.table.setColumnCount(clip_group)
         self.table.setRowCount(top_k)
-        self.table.setHorizontalHeaderLabels([str(i) for i in range(1, clip_group + 1)])
+        self.table.setHorizontalHeaderLabels([
+            f"{idx}\n{clip['start'] + 1}-{clip['end']}"
+            for idx, clip in enumerate(predict_text, 1)
+        ])
         for i in range(clip_group):
-            self.table.setColumnWidth(i, 50)
+            self.table.setColumnWidth(i, 75)
         for i in range(top_k):
-            self.table.setRowHeight(i, 44)
-        self.table.setMinimumHeight(44 * (top_k + 1))
-        for j, top in enumerate(predict_text):
-            for i, item in enumerate(top):
-                self.table.setItem(i, j, QTableWidgetItem(item))
+            self.table.setRowHeight(i, 60)
+        for j, clip in enumerate(predict_text):
+            range_text = f"{clip['start'] + 1}-{clip['end']}"
+            for i, item in enumerate(clip["keywords"]):
+                cell = QTableWidgetItem(item)
+                cell.setTextAlignment(Qt.AlignCenter)
+                cell.setToolTip(f"帧区间: {range_text}")
+                self.table.setItem(i, j, cell)
+        self.table.resizeRowsToContents()
+        self.table.setMinimumHeight(60 * (top_k + 1))
 
 
 class TableFrame(TableWidget):

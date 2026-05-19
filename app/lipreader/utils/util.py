@@ -367,7 +367,7 @@ class ModelInferenceUtil:
     @staticmethod
     def group_scores_by_boundaries(scores, clip_boundaries, top_k):
         """
-        根据边界分组 scores，并返回每组的 Top-K
+        根据边界分组 scores，并返回每组的 Top-K 以及帧区间
         
         参数:
             scores: List[Tensor], 每个元素是 (T, V)
@@ -375,14 +375,14 @@ class ModelInferenceUtil:
             top_k: 返回每组前k个
         
         返回:
-            keywords: List[Tensor], (clip数, top_k)
+            clip_info: List[List[Dict[str, Any]]], 每组包含 keywords 与 start/end
         """
-        keywords = []
+        clip_info = []
         for b in range(len(scores)):
             s = scores[b]
             boundaries = clip_boundaries[b]
             clip_results = []
-            
+
             for i in range(len(boundaries) - 1):
                 start, end = boundaries[i], boundaries[i + 1]
                 clip_scores = s[start:end]  # (clip_len, V)
@@ -390,11 +390,15 @@ class ModelInferenceUtil:
                 mean_scores = torch.mean(clip_scores, dim=0)  # (V,)
                 # 取Top-K
                 topk_indices = torch.topk(mean_scores, k=top_k).indices
-                clip_results.append(topk_indices)
-            
-            keywords.append(torch.stack(clip_results) if clip_results else torch.tensor([]))
-        
-        return keywords
+                clip_results.append({
+                    "indices": topk_indices,
+                    "start": start,
+                    "end": end,
+                })
+
+            clip_info.append(clip_results)
+
+        return clip_info
 
     @staticmethod
     @torch.no_grad()
@@ -425,27 +429,31 @@ class ModelInferenceUtil:
         scores = model.kws_inference(c3d_feature, video_mask)
         
         # data post process
+        clip_info_batch = []
         if strategy == "Manu":
             # Manu策略：固定clip分组
             clip_group = (len(scores[0]) + clip - 1) // clip
-            new_scores = []
             for b in range(len(scores)):
-                new_lst = []
+                clip_results = []
                 for c in range(clip_group):
                     start_idx = c * clip
                     end_idx = min((c + 1) * clip, len(scores[0]))
                     data = scores[b][start_idx:end_idx]
-                    data_mean = torch.mean(data, dim=0, keepdim=True)
-                    new_lst.append(data_mean.squeeze(0))
-                new_scores.append(torch.stack(new_lst))
-            keywords = [torch.topk(score, k=top_k, dim=-1)[1] for score in new_scores]
+                    data_mean = torch.mean(data, dim=0, keepdim=True).squeeze(0)
+                    topk_indices = torch.topk(data_mean, k=top_k).indices
+                    clip_results.append({
+                        "indices": topk_indices,
+                        "start": start_idx,
+                        "end": end_idx,
+                    })
+                clip_info_batch.append(clip_results)
         else:
             # Auto策略：基于峰值检测的自适应分组
             clip_boundaries = ModelInferenceUtil.adaptive_clip_by_peaks(scores)
-            keywords = ModelInferenceUtil.group_scores_by_boundaries(scores, clip_boundaries, top_k)
+            clip_info_batch = ModelInferenceUtil.group_scores_by_boundaries(scores, clip_boundaries, top_k)
         
         # decode text
-        predict_keyword = ModelInferenceUtil.kws_idx_to_hz(keywords)
+        predict_keyword = ModelInferenceUtil.kws_idx_to_hz(clip_info_batch)
         return predict_keyword
 
     @staticmethod
@@ -567,11 +575,16 @@ class ModelInferenceUtil:
         res_batch = list()
         for b in range(len(array)):
             res = list()
-            for g in range(len(array[0])):
+            for g in range(len(array[b])):
+                info = array[b][g]
                 element = []
-                for n in array[b][g]:
+                for n in info["indices"]:
                     element.append(ModelInferenceUtil.hanzi_vocab[n.item()])
-                res.append(element)
+                res.append({
+                    "keywords": element,
+                    "start": info["start"],
+                    "end": info["end"],
+                })
             res_batch.append(res)
         return res_batch
 
