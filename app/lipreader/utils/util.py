@@ -4,7 +4,9 @@ import torch
 import cv2
 import face_alignment
 import os
+import torch.nn.functional as F
 
+from scipy.ndimage import gaussian_filter1d
 from icecream import ic
 
 # os.environ.pop("QT_QPA_PLATFORM_PLUGIN_PATH")
@@ -237,131 +239,192 @@ class ModelInferenceUtil:
     pinyin_vocab = ["<pad>", "<sos>", "<eos>", "-"] + pinyin_list
 
     @staticmethod
-    def find_peaks_1d(scores, distance=1, prominence_ratio=0.1):
+    def smooth_prediction_segments(pred, min_segment_len=2):
         """
-        在1D分数曲线上找峰值
-        
-        参数:
-            scores: (T,) 分数曲线
-            distance: 两个峰值之间的最小距离
-            prominence_ratio: 峰值突出度阈值（相对于均值的标准差倍数）
-        
-        返回:
-            peak_indices: 峰值位置列表
+        平滑Top1序列，例如：451 451 1754 451 451 → 451 451 451 451 451
         """
-        scores = scores.cpu() if scores.is_cuda else scores
-        scores = scores.numpy() if isinstance(scores, torch.Tensor) else scores
-        T = len(scores)
-        
-        if T < 3:
-            return list(range(T))
-        
-        peaks = []
-        
-        # 计算阈值：使用均值 + prominence_ratio * 标准差
-        mean_score = scores.mean()
-        std_score = scores.std()
-        if std_score > 0:
-            threshold = mean_score + prominence_ratio * std_score
-        else:
-            threshold = mean_score
-        
-        # 找局部最大值（比相邻帧分数高）
-        for i in range(1, T - 1):
-            if scores[i] > scores[i - 1] and scores[i] > scores[i + 1]:
-                if scores[i] > threshold:
-                    peaks.append(i)
-        
-        # 去掉太近的峰值（只保留最强的）
-        if len(peaks) > 1:
-            # 按分数从高到低排序
-            peaks_sorted = sorted(peaks, key=lambda x: scores[x], reverse=True)
-            filtered_peaks = [peaks_sorted[0]]
-            for p in peaks_sorted[1:]:
-                # 确保与已有峰值距离足够远
-                if all(p - fp >= distance for fp in filtered_peaks):
-                    filtered_peaks.append(p)
-            # 按位置排序返回
-            peaks = sorted(filtered_peaks)
-        
-        return peaks
+
+        pred = pred.clone()
+        T = len(pred)
+        start = 0
+        segments = []
+
+        for i in range(1, T):
+            if pred[i] != pred[i - 1]:
+                segments.append([start, i, pred[i - 1].item()])
+                start = i
+
+        segments.append([start, T, pred[-1].item()])
+
+        for idx in range(1, len(segments) - 1):
+            seg_start, seg_end, seg_cls = segments[idx]
+            seg_len = seg_end - seg_start
+
+            prev_cls = segments[idx - 1][2]
+            next_cls = segments[idx + 1][2]
+
+            if seg_len < min_segment_len:
+                if prev_cls == next_cls:
+                    pred[seg_start:seg_end] = prev_cls
+
+        return pred
 
     @staticmethod
-    def adaptive_clip_by_peaks(scores, distance=1, prominence_ratio=0.1,
-                                 min_frames_per_clip=1, max_frames_per_clip=6):
+    def extract_change_boundaries(pred):
         """
-        基于峰值检测的自适应分组
-        
+        从Top1类别变化中提取边界
+        """
+
+        boundaries = [0]
+        for t in range(1, len(pred)):
+            if pred[t] != pred[t - 1]:
+                if pred[t] == ModelInferenceUtil.blank_token:
+                    continue
+                boundaries.append(t)
+        boundaries.append(len(pred))
+        return boundaries
+
+    @staticmethod
+    def refine_boundaries_with_js(boundaries, js_curve, search_radius=2):
+        """
+        将边界对齐到附近JS峰值
+        """
+
+        js_curve = (
+            js_curve.cpu().numpy()
+            if isinstance(js_curve, torch.Tensor)
+            else js_curve
+        )
+
+        refined = [0]
+        T = len(js_curve)
+
+        for b in boundaries[1:-1]:
+            left = max(0, b - search_radius)
+            right = min(T, b + search_radius + 1)
+
+            local_peak = np.argmax(js_curve[left:right])
+            refined.append(left + local_peak)
+
+        refined.append(boundaries[-1])
+        refined = sorted(set(refined))
+        return refined
+
+    @staticmethod
+    def compute_js_curve(logits, top_k=100):
+        """
+        计算相邻帧JS散度变化曲线
+        仅保留Top-K类别降低噪声
+        """
+
+        prob = F.softmax(logits, dim=1)
+
+        # 只保留Top-K概率
+        top_values, _ = torch.topk(prob, k=min(top_k, prob.shape[1]), dim=1)
+
+        # 重新归一化
+        top_values = top_values / (top_values.sum(dim=1, keepdim=True) + 1e-8)
+
+        T = top_values.shape[0]
+        if T <= 1:
+            return torch.zeros(T, device=logits.device)
+
+        js_scores = []
+        eps = 1e-8
+
+        for t in range(T - 1):
+            p = top_values[t]
+            q = top_values[t + 1]
+            m = 0.5 * (p + q)
+
+            kl_pm = torch.sum(p * torch.log((p + eps) / (m + eps)))
+            kl_qm = torch.sum(q * torch.log((q + eps) / (m + eps)))
+            js = 0.5 * (kl_pm + kl_qm)
+            js_scores.append(js)
+
+        js_scores = torch.stack(js_scores)
+
+        js_scores = torch.cat([js_scores, js_scores[-1:].clone()], dim=0)
+
+        return js_scores
+
+    @staticmethod
+    def smooth_curve(curve, sigma=1):
+        """
+        高斯平滑
+        """
+
+        if isinstance(curve, torch.Tensor):
+            device = curve.device
+            curve_np = curve.detach().cpu().numpy()
+            smooth_np = gaussian_filter1d(curve_np, sigma=sigma)
+            return torch.tensor(smooth_np, dtype=curve.dtype, device=device)
+
+        return gaussian_filter1d(curve, sigma=sigma)
+
+    @staticmethod
+    def adaptive_clip_by_segments(scores, min_segment_len=2, js_top_k=20, js_search_radius=2):
+        """
+        基于Top1类别连续区域的自适应切分
+
         参数:
-            scores: List[Tensor], 每个元素是 (T, V) 每帧对词库的得分
-            distance: 两个峰值之间的最小距离
-            prominence_ratio: 峰值突出度阈值（相对于均值的标准差倍数）
-            min_frames_per_clip: 每组最小帧数
-            max_frames_per_clip: 每组最大帧数
-        
+            scores: List[(T,V)]
+            min_segment_len: 小于该长度的类别段视为抖动
+            js_top_k: JS计算时保留Top-K类别
+            js_search_radius: JS局部搜索窗口
+
         返回:
-            clip_boundaries: List[List[int]], 每个视频的边界列表
+            clip_boundaries: List[List[int]]
         """
         clip_boundaries = []
         for b in range(len(scores)):
             s = scores[b]  # (T, V)
+            print(f"[Auto Debug] 视频{b}: score_matrix shape={s.shape}")
             T = len(s)
-            
-            if T <= min_frames_per_clip:
+            if T <= 1:
                 clip_boundaries.append([0, T])
                 continue
-            
-            # 1. 计算每帧的综合得分（所有词的得分之和）
-            frame_scores = s.sum(dim=1)  # (T,)
-            
-            # DEBUG: 打印分数分布，帮助诊断峰值检测
-            print(f"[Auto Debug] 视频{b}: 总帧数={T}, 得分分布: min={frame_scores.min():.2f}, max={frame_scores.max():.2f}, mean={frame_scores.mean():.2f}")
-            
-            # 2. 找得分曲线的峰值
-            peak_indices = ModelInferenceUtil.find_peaks_1d(
-                frame_scores, 
-                distance=distance,
-                prominence_ratio=prominence_ratio
+
+            # Step1 获取Top1预测
+            pred = torch.argmax(s, dim=1)
+            print(f"[Auto Debug] 视频{b}: "f"原始Top1序列={pred.tolist()}")
+
+            # Step2 平滑短时抖动
+            pred = ModelInferenceUtil.smooth_prediction_segments(pred, min_segment_len=min_segment_len)
+            print(f"[Auto Debug] 视频{b}: "f"平滑后Top1序列={pred.tolist()}")
+
+            # Step3 提取边界
+            boundaries = ModelInferenceUtil.extract_change_boundaries(pred)
+
+            print(f"[Auto Debug] 视频{b}: "f"类别变化边界={boundaries}")
+
+            # Step4 JS散度校正
+            js_curve = ModelInferenceUtil.compute_js_curve(s, top_k=js_top_k)
+            js_curve = ModelInferenceUtil.smooth_curve(js_curve, sigma=1)
+            refined_boundaries = (
+                ModelInferenceUtil.refine_boundaries_with_js(
+                    boundaries,
+                    js_curve,
+                    js_search_radius
+                )
             )
-            
-            # DEBUG: 打印峰值检测结果，验证是否真正使用了自适应
-            print(f"[Auto Debug] 视频{b}: 总帧数={T}, 检测到峰值={len(peak_indices)}, 峰值位置={peak_indices}")
-            
-            # 3. 如果没找到峰值，用固定长度分组
-            if len(peak_indices) < 2:
-                print(f"[Auto Debug] 峰值<2，回退到固定分组")
-                num_clips = max(1, T // 5)  # 默认每5帧一组
-                clip_size = T // num_clips
-                boundaries = [i * clip_size for i in range(num_clips)] + [T]
-                clip_boundaries.append(boundaries)
-                continue
-            
-            # 4. 基于峰值生成边界
-            boundaries = [0]
-            for peak in peak_indices:
-                # 确保每个clip长度合理
-                if peak - boundaries[-1] >= min_frames_per_clip:
-                    boundaries.append(peak)
-            
-            # 5. 处理过长的clip
-            final_boundaries = [0]
-            for i in range(1, len(boundaries)):
-                gap = boundaries[i] - final_boundaries[-1]
-                if gap > max_frames_per_clip:
-                    # 分成多段
-                    num_splits = (gap + max_frames_per_clip - 1) // max_frames_per_clip
-                    step = gap // num_splits
-                    for j in range(1, num_splits):
-                        final_boundaries.append(final_boundaries[-1] + step)
-                final_boundaries.append(boundaries[i])
-            
-            # 6. 确保最后一个边界是视频结尾
+
+            # Step5 去重排序
+            refined_boundaries = sorted(set(refined_boundaries))
+
+            # 防止出现极短片段
+            final_boundaries = [refined_boundaries[0]]
+
+            for idx in refined_boundaries[1:]:
+                if idx - final_boundaries[-1] >= min_segment_len:
+                    final_boundaries.append(idx)
+
             if final_boundaries[-1] != T:
                 final_boundaries.append(T)
-            
-            print(f"[Auto Debug] 最终分组数={len(final_boundaries)-1}, 边界={final_boundaries}")
+
+            print(f"[Auto Debug] 视频{b}: "f"最终边界={final_boundaries}")
             clip_boundaries.append(final_boundaries)
-        
+
         return clip_boundaries
 
     @staticmethod
@@ -388,6 +451,8 @@ class ModelInferenceUtil:
                 clip_scores = s[start:end]  # (clip_len, V)
                 # 该clip所有帧求平均
                 mean_scores = torch.mean(clip_scores, dim=0)  # (V,)
+                # prob = F.softmax(clip_scores, dim=1)
+                # mean_scores = prob.mean(dim=0)
                 # 取Top-K
                 topk_indices = torch.topk(mean_scores, k=top_k).indices
                 clip_results.append({
@@ -427,7 +492,7 @@ class ModelInferenceUtil:
         # inference
         model.eval()
         scores = model.kws_inference(c3d_feature, video_mask)
-        
+
         # data post process
         clip_info_batch = []
         if strategy == "Manu":
@@ -448,10 +513,10 @@ class ModelInferenceUtil:
                     })
                 clip_info_batch.append(clip_results)
         else:
-            # Auto策略：基于峰值检测的自适应分组
-            clip_boundaries = ModelInferenceUtil.adaptive_clip_by_peaks(scores)
+            # Auto策略：基于帧级类别连续区域的自适应分组
+            clip_boundaries = ModelInferenceUtil.adaptive_clip_by_segments(scores)
             clip_info_batch = ModelInferenceUtil.group_scores_by_boundaries(scores, clip_boundaries, top_k)
-        
+
         # decode text
         predict_keyword = ModelInferenceUtil.kws_idx_to_hz(clip_info_batch)
         return predict_keyword
