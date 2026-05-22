@@ -14,6 +14,7 @@ from ..config import args
 from ..assets import hanzi_list, pinyin_list
 from ..model import C3dModel, WPELipReader
 
+
 # from .hanzi import hanzi_list
 # from .pinyin import pinyin_list
 # from .model.model_c3d import C3dModel
@@ -83,7 +84,7 @@ class VideoProcessUtil:
             img = cv2.warpAffine(frame, M[:2], (256, 256))
             (x, y) = front256[-20:].mean(0).astype(np.int32)
             w = 160 // 2
-            img = img[y - w // 2 : y + w // 2, x - w : x + w, ...]  # shape: [80, 160, 3]
+            img = img[y - w // 2: y + w // 2, x - w: x + w, ...]  # shape: [80, 160, 3]
             lips.append(img)
             # if i == 0:
             #     ic(img.shape)
@@ -285,93 +286,13 @@ class ModelInferenceUtil:
         return boundaries
 
     @staticmethod
-    def refine_boundaries_with_js(boundaries, js_curve, search_radius=2):
-        """
-        将边界对齐到附近JS峰值
-        """
-
-        js_curve = (
-            js_curve.cpu().numpy()
-            if isinstance(js_curve, torch.Tensor)
-            else js_curve
-        )
-
-        refined = [0]
-        T = len(js_curve)
-
-        for b in boundaries[1:-1]:
-            left = max(0, b - search_radius)
-            right = min(T, b + search_radius + 1)
-
-            local_peak = np.argmax(js_curve[left:right])
-            refined.append(left + local_peak)
-
-        refined.append(boundaries[-1])
-        refined = sorted(set(refined))
-        return refined
-
-    @staticmethod
-    def compute_js_curve(logits, top_k=100):
-        """
-        计算相邻帧JS散度变化曲线
-        仅保留Top-K类别降低噪声
-        """
-
-        prob = F.softmax(logits, dim=1)
-
-        # 只保留Top-K概率
-        top_values, _ = torch.topk(prob, k=min(top_k, prob.shape[1]), dim=1)
-
-        # 重新归一化
-        top_values = top_values / (top_values.sum(dim=1, keepdim=True) + 1e-8)
-
-        T = top_values.shape[0]
-        if T <= 1:
-            return torch.zeros(T, device=logits.device)
-
-        js_scores = []
-        eps = 1e-8
-
-        for t in range(T - 1):
-            p = top_values[t]
-            q = top_values[t + 1]
-            m = 0.5 * (p + q)
-
-            kl_pm = torch.sum(p * torch.log((p + eps) / (m + eps)))
-            kl_qm = torch.sum(q * torch.log((q + eps) / (m + eps)))
-            js = 0.5 * (kl_pm + kl_qm)
-            js_scores.append(js)
-
-        js_scores = torch.stack(js_scores)
-
-        js_scores = torch.cat([js_scores, js_scores[-1:].clone()], dim=0)
-
-        return js_scores
-
-    @staticmethod
-    def smooth_curve(curve, sigma=1):
-        """
-        高斯平滑
-        """
-
-        if isinstance(curve, torch.Tensor):
-            device = curve.device
-            curve_np = curve.detach().cpu().numpy()
-            smooth_np = gaussian_filter1d(curve_np, sigma=sigma)
-            return torch.tensor(smooth_np, dtype=curve.dtype, device=device)
-
-        return gaussian_filter1d(curve, sigma=sigma)
-
-    @staticmethod
-    def adaptive_clip_by_segments(scores, min_segment_len=2, js_top_k=20, js_search_radius=2):
+    def adaptive_clip_by_segments(scores, min_segment_len=2):
         """
         基于Top1类别连续区域的自适应切分
 
         参数:
             scores: List[(T,V)]
             min_segment_len: 小于该长度的类别段视为抖动
-            js_top_k: JS计算时保留Top-K类别
-            js_search_radius: JS局部搜索窗口
 
         返回:
             clip_boundaries: List[List[int]]
@@ -395,30 +316,9 @@ class ModelInferenceUtil:
 
             # Step3 提取边界
             boundaries = ModelInferenceUtil.extract_change_boundaries(pred)
-
             print(f"[Auto Debug] 视频{b}: "f"类别变化边界={boundaries}")
 
-            # Step4 JS散度校正
-            js_curve = ModelInferenceUtil.compute_js_curve(s, top_k=js_top_k)
-            js_curve = ModelInferenceUtil.smooth_curve(js_curve, sigma=1)
-            refined_boundaries = (
-                ModelInferenceUtil.refine_boundaries_with_js(
-                    boundaries,
-                    js_curve,
-                    js_search_radius
-                )
-            )
-
-            # Step5 去重排序
-            refined_boundaries = sorted(set(refined_boundaries))
-
-            # 防止出现极短片段
-            final_boundaries = [refined_boundaries[0]]
-
-            for idx in refined_boundaries[1:]:
-                if idx - final_boundaries[-1] >= min_segment_len:
-                    final_boundaries.append(idx)
-
+            final_boundaries = boundaries.copy()
             if final_boundaries[-1] != T:
                 final_boundaries.append(T)
 
@@ -614,9 +514,9 @@ class ModelInferenceUtil:
                 if n == ModelInferenceUtil.eos_token:
                     break
                 if (
-                    n != ModelInferenceUtil.pad_token
-                    and n != ModelInferenceUtil.blank_token
-                    and n != ModelInferenceUtil.sos_token
+                        n != ModelInferenceUtil.pad_token
+                        and n != ModelInferenceUtil.blank_token
+                        and n != ModelInferenceUtil.sos_token
                 ):
                     element.append(ModelInferenceUtil.hanzi_vocab[n.item()])
             res.append(" ".join(element).strip())
